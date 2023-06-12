@@ -41,7 +41,7 @@ const main = async () => {
                 {
                   action: "view",
                   label: "View",
-                  url: "https://yabu.me/" + npub,
+                  url: "https://yabu.me/" + note,
                   clear: true,
                 },
               ]
