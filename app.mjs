@@ -22,26 +22,31 @@ const main = async () => {
       const tagList = ev.tags;
       tagList.filter(record => (record[0] === "p" && record[1].match(/[0-9a-f]{64}/gi))).forEach(record => {
         try {
-          const npub = nip19.npubEncode(record[1]);
-          const note = nip19.noteEncode(ev.id);
+          const toNpub = nip19.npubEncode(record[1]);
+          const fromNpub = nip19.npubEncode(ev.pubkey);
+          const nevent = nip19.neventEncode({
+            id: ev.id,
+            relays: [RELAY_URL],
+            author: ev.pubkey,
+          })
           const message = ev.content;
 
           const headers = {
             Authorization: "Bearer " + PUSH_TOKEN,
           };
-          console.log(`to: ${npub}, message: ${message}`);
+          console.log(`to: ${toNpub}, message: ${message}`);
           axios.post(
             PUSH_URL,
             {
-              topic: npub,
-              title: "Reply from: " + npub,
+              topic: toNpub,
+              title: "Reply from: " + fromNpub,
               message: message,
               tags: ["vibration_mode"],
               actions: [
                 {
                   action: "view",
                   label: "View",
-                  url: "https://yabu.me/" + note,
+                  url: "https://yabu.me/" + nevent,
                   clear: true,
                 },
               ]
