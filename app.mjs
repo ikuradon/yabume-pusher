@@ -1,23 +1,33 @@
+import axios from "axios";
+import { getUnixTime } from "date-fns";
+import "dotenv/config";
 import { nip19, relayInit } from "nostr-tools";
 import "websocket-polyfill";
-import "dotenv/config";
-import axios from "axios";
 
 const RELAY_URL = process.env.RELAY_URL;
 const PUSH_URL = process.env.PUSH_URL;
 const PUSH_TOKEN = process.env.PUSH_TOKEN;
 
+const ACCEPT_DUR_SEC = 5 * 60;
+
+
+const currUnixtime = () => getUnixTime(new Date());
+
 const main = async () => {
   const relay = relayInit(RELAY_URL);
   relay.on("error", () => {
     console.error("failed to connect");
+    process.exit(0);
   });
 
   relay.connect();
 
-  const sub = relay.sub([{ kinds: [1], limit: 1 }]);
+  const sub = relay.sub([{ kinds: [1], since: currUnixtime() }]);
 
   sub.on("event", (ev) => {
+    if (ev.created_at < getUnixTime(new Date()) - ACCEPT_DUR_SEC)
+      return false;
+
     if (!!ev.tags) {
       const tagList = ev.tags;
       tagList.filter(record => (record[0] === "p" && record[1].match(/[0-9a-f]{64}/gi))).forEach(record => {
