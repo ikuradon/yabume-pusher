@@ -22,7 +22,7 @@ const main = async () => {
 
   relay.connect();
 
-  const sub = relay.sub([{ kinds: [1], since: currUnixtime() }]);
+  const sub = relay.sub([{ kinds: [1, 42], since: currUnixtime() }]);
 
   sub.on("event", (ev) => {
     if (ev.created_at < getUnixTime(new Date()) - ACCEPT_DUR_SEC)
