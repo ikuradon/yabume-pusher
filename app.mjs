@@ -10,7 +10,6 @@ const PUSH_TOKEN = process.env.PUSH_TOKEN;
 
 const ACCEPT_DUR_SEC = 5 * 60;
 
-
 const currUnixtime = () => getUnixTime(new Date());
 
 const main = async () => {
@@ -25,54 +24,60 @@ const main = async () => {
   const sub = relay.sub([{ kinds: [1, 42], since: currUnixtime() }]);
 
   sub.on("event", (ev) => {
-    if (ev.created_at < getUnixTime(new Date()) - ACCEPT_DUR_SEC)
-      return false;
+    if (ev.created_at < getUnixTime(new Date()) - ACCEPT_DUR_SEC) return false;
 
     if (!!ev.tags) {
       const tagList = ev.tags;
-      tagList.filter(record => (record[0] === "p" && record[1].match(/[0-9a-f]{64}/gi))).forEach(record => {
-        try {
-          const toNpub = nip19.npubEncode(record[1]);
-          const fromNpub = nip19.npubEncode(ev.pubkey);
-          const nevent = nip19.neventEncode({
-            id: ev.id,
-            relays: [RELAY_URL],
-            author: ev.pubkey,
-          })
-          const message = ev.content;
+      tagList
+        .filter(
+          (record) => record[0] === "p" && record[1].match(/[0-9a-f]{64}/gi)
+        )
+        .forEach((record) => {
+          try {
+            const toNpub = nip19.npubEncode(record[1]);
+            const fromNpub = nip19.npubEncode(ev.pubkey);
+            const nevent = nip19.neventEncode({
+              id: ev.id,
+              relays: [RELAY_URL],
+              author: ev.pubkey,
+            });
+            const message = ev.content;
 
-          const headers = {
-            Authorization: "Bearer " + PUSH_TOKEN,
-          };
-          console.log(`to: ${toNpub}, message: ${message}`);
-          axios.post(
-            PUSH_URL,
-            {
-              topic: toNpub,
-              title: "Reply from: " + fromNpub,
-              message: message,
-              tags: ["vibration_mode"],
-              actions: [
+            const headers = {
+              Authorization: "Bearer " + PUSH_TOKEN,
+            };
+            console.log(`to: ${toNpub}, message: ${message}`);
+            axios
+              .post(
+                PUSH_URL,
                 {
-                  action: "view",
-                  label: "View",
-                  url: "https://yabu.me/" + nevent,
-                  clear: true,
+                  topic: toNpub,
+                  title: "Reply from: " + fromNpub,
+                  message: message,
+                  tags: ["vibration_mode"],
+                  actions: [
+                    {
+                      action: "view",
+                      label: "View",
+                      url: "https://yabu.me/" + nevent,
+                      clear: true,
+                    },
+                  ],
                 },
-              ]
-            },
-            {
-              headers: headers,
-            }
-          ).then(response => {
-            console.log("OK!");
-          }).catch(error => {
-            console.log(error.response.data);
-          });
-        } catch (e) {
-          console.log(e);
-        }
-      });
+                {
+                  headers: headers,
+                }
+              )
+              .then((response) => {
+                console.log("OK!");
+              })
+              .catch((error) => {
+                console.log(error.response.data);
+              });
+          } catch (e) {
+            console.log(e);
+          }
+        });
     }
   });
 };
