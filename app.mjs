@@ -38,10 +38,17 @@ const publishMessage = async (topic, title, message, tags, actions) => {
 };
 
 const checkEnabled = async (pubkey, kind) => {
+  console.log(`key: ${pubkey}, kind: ${kind}`);
   const key = `push-${pubkey}-${kind}`;
   try {
     const value = await redis.get(key);
     if (value === "1") {
+      return true;
+    }
+    if (value === "0") {
+      return false;
+    }
+    if (value === null && kind === KINDS.SHORT_TEXT_NOTE) {
       return true;
     }
   } catch (err) {
@@ -71,27 +78,28 @@ const main = async () => {
   ]);
   const subZap = relay.sub([{ kinds: [KINDS.ZAP], since: currUnixtime() }]);
 
-  subNote.on("event", (ev) => {
+  subNote.on("event", async (ev) => {
     if (ev.created_at < currUnixtime() - ACCEPT_DUR_SEC) return false;
 
     if (!!ev.tags) {
       const tagList = ev.tags;
-      tagList
-        .filter(
-          (record) => record[0] === "p" && record[1].match(/[0-9a-f]{64}/gi)
-        )
-        .forEach((record) => {
-          try {
-            const receiverNpub = nip19.npubEncode(record[1]);
-            const senderNpub = nip19.npubEncode(ev.pubkey);
-            const nevent = nip19.neventEncode({
-              id: ev.id,
-              relays: [RELAY_URL],
-              author: ev.pubkey,
-            });
-            const message = ev.content;
+      for (let record of tagList.filter(
+        ([t, v]) => t === "p" && v.match(/[0-9a-f]{64}/gi)
+      )) {
+        try {
+          const receiverHex = record[1];
+          const receiverNpub = nip19.npubEncode(receiverHex);
+          const senderNpub = nip19.npubEncode(ev.pubkey);
+          const nevent = nip19.neventEncode({
+            id: ev.id,
+            relays: [RELAY_URL],
+            author: ev.pubkey,
+          });
+          const message = ev.content;
 
-            console.log(`[NOTE] to: ${receiverNpub}, message: ${message}`);
+          console.log(`[NOTE] to: ${receiverNpub}, message: ${message}`);
+          if (await checkEnabled(receiverHex, ev.kind)) {
+            console.log(`Enabled user`);
             publishMessage(
               receiverNpub,
               "Reply from: " + senderNpub,
@@ -106,10 +114,11 @@ const main = async () => {
                 },
               ]
             );
-          } catch (e) {
-            console.log(e);
           }
-        });
+        } catch (e) {
+          console.log(e);
+        }
+      }
     }
   });
 
@@ -128,7 +137,7 @@ const main = async () => {
           const senderNpub = nip19.npubEncode(ev.pubkey);
           console.log(`[DM] to: ${receiverNpub}`);
 
-          if (await checkEnabled(receiverHex, KINDS.ENCRYPTED_DIRECT_MESSAGE)) {
+          if (await checkEnabled(receiverHex, ev.kind)) {
             console.log(`Enabled user`);
 
             publishMessage(
@@ -181,7 +190,7 @@ const main = async () => {
         const senderNpub = nip19.npubEncode(senderHex);
         console.log(`[Zap] to: ${receiverNpub}`);
 
-        if (await checkEnabled(receiverHex, KINDS.ZAP)) {
+        if (await checkEnabled(receiverHex, ev.kind)) {
           console.log(`Enabled user`);
 
           const title = !anonZap
