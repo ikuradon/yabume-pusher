@@ -81,6 +81,8 @@ const main = async () => {
   subNote.on("event", async (ev) => {
     if (ev.created_at < currUnixtime() - ACCEPT_DUR_SEC) return false;
 
+    const pushList = [];
+
     if (!!ev.tags) {
       const tagList = ev.tags;
       for (let record of tagList.filter(
@@ -96,6 +98,11 @@ const main = async () => {
             author: ev.pubkey,
           });
           const message = ev.content;
+
+          if (pushList.indexOf(receiverHex) >= 0) {
+            return;
+          }
+          pushList.push(receiverHex);
 
           console.log(`[NOTE] to: ${receiverNpub}, message: ${message}`);
           if (await checkEnabled(receiverHex, ev.kind)) {
