@@ -86,7 +86,7 @@ const main = async () => {
     if (!!ev.tags) {
       const tagList = ev.tags;
       for (let record of tagList.filter(
-        ([t, v]) => t === "p" && v.match(/[0-9a-f]{64}/gi)
+        ([t, v]) => t === "p" && v?.match(/[0-9a-f]{64}/gi)
       )) {
         try {
           const receiverHex = record[1];
