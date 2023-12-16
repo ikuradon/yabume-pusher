@@ -90,6 +90,12 @@ const main = async () => {
       )) {
         try {
           const receiverHex = record[1];
+
+          if (pushList.indexOf(receiverHex) >= 0) {
+            return;
+          }
+          pushList.push(receiverHex);
+
           const receiverNpub = nip19.npubEncode(receiverHex);
           const senderNpub = nip19.npubEncode(ev.pubkey);
           const nevent = nip19.neventEncode({
@@ -98,11 +104,6 @@ const main = async () => {
             author: ev.pubkey,
           });
           const message = ev.content;
-
-          if (pushList.indexOf(receiverHex) >= 0) {
-            return;
-          }
-          pushList.push(receiverHex);
 
           console.log(`[NOTE] to: ${receiverNpub}, message: ${message}`);
           if (await checkEnabled(receiverHex, ev.kind)) {
